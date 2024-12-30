@@ -1,0 +1,5 @@
+name: SolarsCombatRolePlayPlugin
+main: net.solar_studios.main
+version: 0.0.1
+author: Logan C Hobson
+api-version: 1.21.4 #or maybe 1.21.23?
