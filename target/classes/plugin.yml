@@ -12,3 +12,5 @@ commands:
     description: Start combat.
   damage:
     description: Deal damage to a target.
+  leavecombat:
+    description: Removes player from their joined combat.

@@ -42,6 +42,8 @@ public class CombatManagerPlugin extends JavaPlugin implements TabExecutor {
                 return startCombat(player);
             case "damage":
                 return dealDamage(player, args);
+            case "leavecombat":
+                return leaveCombat(player);
             default:
                 return false;
         }
