@@ -23,6 +23,8 @@ public class CombatManagerPlugin extends JavaPlugin implements TabExecutor {
         this.getCommand("startcombat").setExecutor(this);
         this.getCommand("damage").setExecutor(this);
         this.getCommand("leavecombat").setExecutor(this);
+        this.getCommand("lockcombat").setExecutor(this);
+        this.getCommand("removefromcombat").setExecutor(this);
     }
 
     @Override
@@ -44,9 +46,62 @@ public class CombatManagerPlugin extends JavaPlugin implements TabExecutor {
                 return dealDamage(player, args);
             case "leavecombat":
                 return leaveCombat(player);
+            case "lockcombat":
+                return lockCombat(player);
+            case "removefromcombat":
+                return removeFromCombat(player, args);
             default:
                 return false;
         }
+    }
+
+    private boolean removeFromCombat(Player player, String[] args) {
+        Battle battle = getBattleByPlayer(player);
+        if (battle == null) {
+            player.sendMessage(ChatColor.RED + "You are not in any combat!");
+            return true;
+        }
+        if (!battle.getOwner().equals(player)) {
+            player.sendMessage(ChatColor.RED + "Only the battle creator can remove players from the combat!");
+            return true;
+        }
+        Player target = Bukkit.getPlayer(args[0]);
+        if (target == null || !target.isOnline()) {
+            player.sendMessage(ChatColor.RED + "The specified player is not online.");
+            return true;
+        }
+
+        if (!battle.isPlayerInBattle(target)) {
+            player.sendMessage(ChatColor.RED + target.getName() + " is not part of this combat!");
+            return true;
+        }
+
+        if (args.length < 1) {
+            player.sendMessage(ChatColor.RED + "Usage: /removePlayerFromCombat <player>");
+            return true;
+        }
+
+        battle.removePlayer(target);
+
+        return true;
+
+    }
+
+    private boolean lockCombat(Player player) {
+        Battle battle = getBattleByPlayer(player);
+        if (battle == null) {
+            player.sendMessage(ChatColor.RED + "You are not in any combat!");
+            return true;
+        }
+        if (!battle.getOwner().equals(player)) {
+            player.sendMessage(ChatColor.RED + "Only the battle creator can start the combat!");
+            return true;
+        }
+
+        battle.setLock();
+        player.sendMessage(ChatColor.GREEN + "The battle is lock is now: " + battle.isLocked());
+        return true;
+
     }
 
     private boolean createCombat(Player player) {
@@ -80,6 +135,16 @@ public class CombatManagerPlugin extends JavaPlugin implements TabExecutor {
             player.sendMessage(ChatColor.RED + "Battle not found with ID: " + battleId);
             return true;
         }
+        if(battle.isLocked())
+        {
+            player.sendMessage(ChatColor.RED + "Battle is locked. You may not join." + battleId);
+        }
+
+        if(battle.isStarted())
+        {
+            player.sendMessage(ChatColor.RED + "This battle has already started, you will be added at the end of the turn order." + battleId);
+        }
+
         if (battle.addPlayer(player)) {
             player.sendMessage(ChatColor.GREEN + "You have joined the combat!");
         } else {
@@ -131,40 +196,56 @@ public class CombatManagerPlugin extends JavaPlugin implements TabExecutor {
     }
 
     private boolean dealDamage(Player player, String[] args) {
-        if (args.length < 3) {
-            player.sendMessage(ChatColor.RED + "Usage: /damage <playername> <target> <damage>");
+        if (args.length < 2) {
+            player.sendMessage(ChatColor.RED + "Usage: /damage <target> <damage>");
+            return true;
+        }
+        Battle battle = getBattleByPlayer(player);
+        Player target = Bukkit.getPlayer(args[0]);
+        if (battle == null) {
+            player.sendMessage(ChatColor.RED + "You are not in a combat!");
+            return true;
+        }
+        if(!battle.isTurn(player))
+        {
+            player.sendMessage(ChatColor.RED + "It is not your turn!");
             return true;
         }
 
-        String targetName = args[1];
+        if (target == null || !target.isOnline()) {
+            player.sendMessage(ChatColor.RED + "The specified player is not online.");
+            return true;
+        }
+
         int damage;
         try {
-            damage = Integer.parseInt(args[2]);
+            damage = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
             player.sendMessage(ChatColor.RED + "Damage must be a number!");
             return true;
         }
 
-        Battle battle = getBattleByPlayer(player);
-        if (battle == null) {
-            player.sendMessage(ChatColor.RED + "You are not in a combat!");
+
+
+
+        if (!battle.isPlayerInBattle(target)) {
+            player.sendMessage(ChatColor.RED + target.getName() + " is not part of this combat!");
             return true;
         }
 
-        Player target = Bukkit.getPlayerExact(targetName);
-        if (target == null || !battle.containsPlayer(target)) {
-            player.sendMessage(ChatColor.RED + "Target player is not in this combat!");
-            return true;
+        battle.dealDamage(target, damage);
+
+        if (battle.getPlayers().size() == 1) {
+            battles.remove(battle.getBattleId());
+            battle.getPlayers().getFirst().remove(); //Jank but should solve the scoreboard lingering issue and clean up residual stuff.
+            player.sendMessage(ChatColor.GREEN + "The battle has ended because only one players remain.");
         }
 
-        if (!battle.isTurn(player)) {
-            player.sendMessage(ChatColor.RED + "It's not your turn!");
-            return true;
-        }
-
-        battle.dealDamage(player, target, damage);
+        battle.advanceTurn();
         return true;
     }
+
+
 
     private Battle getBattleByPlayer(Player player) {
         for (Battle battle : battles.values()) {

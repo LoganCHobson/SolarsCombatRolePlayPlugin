@@ -14,3 +14,7 @@ commands:
     description: Deal damage to a target.
   leavecombat:
     description: Removes player from their joined combat.
+  lockcombat:
+    description: Locks players from joining the combat.
+  removefromcombat:
+      description: Removes a specific player from the combat.
