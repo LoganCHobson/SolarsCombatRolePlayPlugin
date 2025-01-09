@@ -1,5 +1,6 @@
 package net.solar_studios;
 
+import net.solar_studios.CharacterSheetPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -25,6 +26,13 @@ public class CombatManagerPlugin extends JavaPlugin implements TabExecutor {
         this.getCommand("leavecombat").setExecutor(this);
         this.getCommand("lockcombat").setExecutor(this);
         this.getCommand("removefromcombat").setExecutor(this);
+
+        if (Bukkit.getPluginManager().getPlugin("SolarsRPCharacterSheetPlugin") != null) {
+            getLogger().info("CharacterSheetPlugin is loaded!");
+        }
+        else {
+            getLogger().info("CharacterSheetPlugin is NOT loaded! Defaulting values for all combats.");
+        }
     }
 
     @Override
@@ -52,6 +60,18 @@ public class CombatManagerPlugin extends JavaPlugin implements TabExecutor {
                 return removeFromCombat(player, args);
             default:
                 return false;
+        }
+    }
+
+    public int getPlayerHealth(Player player) {
+
+        CharacterSheetPlugin characterSheetPlugin = (CharacterSheetPlugin) Bukkit.getPluginManager().getPlugin("SolarsRPCharacterSheetPlugin");
+
+        if (characterSheetPlugin != null) {
+            return characterSheetPlugin.getHealth();
+        } else {
+            player.sendMessage(ChatColor.RED + "CharacterSheetPlugin not found!");
+            return 100; //Default value for player health for combat.
         }
     }
 
